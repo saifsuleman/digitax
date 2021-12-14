@@ -46,7 +46,7 @@ export default class ReceiptsHandler {
                 query: "INSERT INTO shops (name, owner) VALUES (?, ?)",
                 params: [name, owner],
                 callback: r => {
-                    const id = r.insertId 
+                    const id = r.insertId
                     return resolver({ id, name, owner })
                 }
             })
@@ -107,7 +107,7 @@ export default class ReceiptsHandler {
                         const { id } = obj
                         const shop = (await this.getShop(obj.shop))!
                         const items = await this.getReceiptItems(id)
-                        const receipt: Receipt = {id, items, shop}
+                        const receipt: Receipt = { id, items, shop }
                         receipts.push(receipt)
                     }
 
