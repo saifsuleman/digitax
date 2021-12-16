@@ -19,12 +19,13 @@ export default class DigitaxServer {
     this.app.use(express.urlencoded({ extended: true }));
     this.app.use(express.json());
 
+    this.app.get("/", (req: express.Request, res: express.Response) => res.status(302).redirect("https://github.com/saifsuleman/digitax"))
     this.app.get("/authenticate", (req: any, res: any) => this.authenticate(req, res));
     this.app.get(`/checktoken`, (req: any, res: any) => this.checkToken(req, res));
-    this.app.post(`/register`, (req: any, res: any) => this.register(req, res));
-    this.app.post(`/additem`, (req, res) => this.addItem(req, res))
+    this.app.get(`/register`, (req: any, res: any) => this.register(req, res));
+    this.app.get(`/additem`, (req, res) => this.addItem(req, res))
     this.app.get(`/receipts`, (req, res) => this.getReceipts(req, res))
-    this.app.post(`/deletereceipt`, (req, res) => this.deleteReceipt(req, res))
+    this.app.get(`/deletereceipt`, (req, res) => this.deleteReceipt(req, res))
   }
 
   listen(port: number) {
@@ -40,21 +41,54 @@ export default class DigitaxServer {
   }
 
   async addItem(req: express.Request, res: express.Response) {
-    const { user } = req.query as {
-      user: string,
+    const obj = req.query as {
+      token: string;
+      shop: string;
+      itemName: string;
+      itemPrice: string;
+      user: string;
     }
 
-    const shop = await this.receiptshandler.registerShop("Apple", "stevejobs")
-    this.receiptshandler.addReceipt(user, shop, [{ name: "Macbook", price: 2000 }])
+    if (!obj) {
+      return res.status(400).send({ error: "invalid schema, required { token, shop, itemName, itemPrice, user }" })
+    }
+
+    const claim = await this.authhandler.validateToken(obj.token)
+    if (!claim) {
+      return res.status(400).send({ error: "invalid token" })
+    }
+
+    const shops = await this.receiptshandler.getShops(claim.username)
+    let shop
+    for (const s of shops) {
+      if (s.name == obj.shop) {
+        shop = s
+      }
+    }
+    
+    if (!shop) {
+      return res.status(400).send({ error: "shop not found!" })
+    }
+
+    this.receiptshandler.addReceipt(obj.user, shop, [{ name: obj.itemName, price: Number(obj.itemPrice) }])
     return res.status(200).send({ success: 'ok' })
   }
 
   async getReceipts(req: express.Request, res: express.Response) {
-    const { user } = req.query as {
-      user: string,
+    const { token } = req.query as {
+      token: string,
     }
 
-    const receipts = await this.receiptshandler.getReceipts(user)
+    if (!token) {
+      return res.status(400).send({ error: "token field required" })
+    }
+
+    const claim = await this.authhandler.validateToken(token)
+    if (!claim) {
+      return res.status(400).send({ error: "invalid token" })
+    }
+
+    const receipts = await this.receiptshandler.getReceipts(claim.username)
     return res.status(200).send(receipts)
   }
 
