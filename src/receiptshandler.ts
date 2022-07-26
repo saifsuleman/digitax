@@ -27,7 +27,6 @@ export default class ReceiptsHandler {
                 }
             })
         })
-
     }
 
     async getShops(user: string): Promise<Shop[]> {
